@@ -13,6 +13,7 @@
     "dev:vite": "vite",
     "build:vite": "vite build",
     "build:icon": "tsx scripts/buildIcon.ts",
+    "test:audio": "node --import tsx --test tests/audio-normalization.test.ts",
     "preview": "vite preview",
     "tauri": "tauri",
     "lint": "eslint --fix src",

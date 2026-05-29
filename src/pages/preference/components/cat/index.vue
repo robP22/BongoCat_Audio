@@ -33,6 +33,13 @@ const catStore = useCatStore()
     </ProListItem>
 
     <ProListItem
+      :description="$t('pages.preference.cat.hints.soundFx')"
+      :title="$t('pages.preference.cat.labels.soundFx')"
+    >
+      <Switch v-model:checked="catStore.model.soundFx" />
+    </ProListItem>
+
+    <ProListItem
       :description="$t('pages.preference.cat.hints.motionSound')"
       :title="$t('pages.preference.cat.labels.motionSound')"
     >

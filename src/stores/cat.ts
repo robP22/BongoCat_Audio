@@ -3,6 +3,7 @@ import { reactive, ref } from 'vue'
 
 export interface CatStore {
   model: {
+    soundFx: boolean
     mirror: boolean
     mouseMirror: boolean
     motionSound: boolean
@@ -49,6 +50,7 @@ export const useCatStore = defineStore('cat', () => {
   const migrated = ref(false)
 
   const model = reactive<CatStore['model']>({
+    soundFx: true,
     mirror: false,
     mouseMirror: false,
     motionSound: true,

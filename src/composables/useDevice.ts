@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { PhysicalPosition } from '@tauri-apps/api/dpi'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
+import { useDebounceFn } from '@vueuse/core'
 import { isNil } from 'es-toolkit'
 import { Ticker } from 'pixi.js'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
@@ -8,6 +9,7 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
 import { useCatStore } from '@/stores/cat'
 import { useModelStore } from '@/stores/model'
+import { audioEngine } from '@/utils/audio'
 import { inBetween } from '@/utils/is'
 import { isMac, isWindows } from '@/utils/platform'
 
@@ -48,6 +50,7 @@ export function useDevice() {
   const latestCursorPoint = ref<CursorPoint>()
   const smoothedCursorPoint = ref<CursorPoint>()
   const scaleFactor = ref(1)
+  const playedKeys = new Set<string>()
   const { handlePress, handleRelease, handleMouseChange, handleMouseMove } = useModel()
 
   const tickerCallback = (ticker: Ticker) => {
@@ -97,6 +100,14 @@ export function useDevice() {
     return Ticker.shared.add(tickerCallback)
   }, { immediate: true })
 
+  const debouncedSetKeys = useDebounceFn((keys: string[]) => {
+    void audioEngine.setKeys(keys)
+  }, 100)
+
+  watch(() => Object.keys(modelStore.supportKeys), (keys) => {
+    debouncedSetKeys(keys)
+  }, { immediate: true })
+
   const startListening = () => {
     invoke(INVOKE_KEY.START_DEVICE_LISTENING)
   }
@@ -117,7 +128,7 @@ export function useDevice() {
       }
     }
 
-    return nextKey
+    return modelStore.supportKeys[nextKey] ? nextKey : void 0
   }
 
   const onHideOnHover = (() => {
@@ -190,6 +201,15 @@ export function useDevice() {
       const nextValue = getSupportedKey(value)
 
       if (!nextValue) return
+
+      if (kind === 'KeyboardPress') {
+        if (!playedKeys.has(nextValue)) {
+          playedKeys.add(nextValue)
+          void audioEngine.playKey(nextValue)
+        }
+      } else {
+        playedKeys.delete(nextValue)
+      }
 
       if (nextValue === 'CapsLock') {
         return handleAutoRelease(nextValue)

@@ -14,7 +14,6 @@ import { useModelStore } from '@/stores/model'
 import { join } from '@/utils/path'
 
 import BehaviorModal from './components/behavior-modal/index.vue'
-import FloatMenu from './components/float-menu/index.vue'
 import Upload from './components/upload/index.vue'
 
 const catStore = useCatStore()
@@ -124,8 +123,6 @@ async function handleDelete(item: Model) {
       </Card>
     </template>
   </Masonry>
-
-  <FloatMenu />
 
   <BehaviorModal
     v-if="catStore.model.behavior"

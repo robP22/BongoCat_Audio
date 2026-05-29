@@ -22,6 +22,7 @@ import { hideWindow, setAlwaysOnTop, setTaskbarVisibility, showWindow } from '@/
 import { useCatStore } from '@/stores/cat'
 import { useGeneralStore } from '@/stores/general.ts'
 import { useModelStore } from '@/stores/model'
+import { audioEngine } from '@/utils/audio'
 import { isImage } from '@/utils/is'
 import live2d from '@/utils/live2d'
 import { join } from '@/utils/path'
@@ -38,6 +39,7 @@ const generalStore = useGeneralStore()
 const resizing = ref(false)
 const backgroundImagePath = ref<string>()
 const { stickActive } = useGamepad()
+const pointerDownPos = ref<{ x: number, y: number } | null>(null)
 
 onMounted(startListening)
 
@@ -123,6 +125,8 @@ watch(() => catStore.window.alwaysOnTop, setAlwaysOnTop, { immediate: true })
 
 watch(() => generalStore.app.taskbarVisible, setTaskbarVisibility, { immediate: true })
 
+watch(() => catStore.model.soundFx, val => audioEngine.setSoundFxEnabled(val), { immediate: true })
+
 watch(() => catStore.model.motionSound, live2d.setMotionSoundEnabled, { immediate: true })
 
 watch(() => catStore.model.maxFPS, live2d.setMaxFPS, { immediate: true })
@@ -134,6 +138,26 @@ useTauriListen<MotionInfo>(LISTEN_KEY.START_MOTION, ({ payload }) => {
 useTauriListen<number>(LISTEN_KEY.SET_EXPRESSION, ({ payload }) => {
   live2d.setExpression(payload)
 })
+
+function handlePointerDown(event: PointerEvent) {
+  if (event.button === 0) {
+    pointerDownPos.value = { x: event.clientX, y: event.clientY }
+  }
+}
+
+function handlePointerUp(event: PointerEvent) {
+  if (event.button === 0 && pointerDownPos.value) {
+    const dx = event.clientX - pointerDownPos.value.x
+    const dy = event.clientY - pointerDownPos.value.y
+    const distance = Math.hypot(dx, dy)
+
+    if (distance < 5) {
+      void audioEngine.playMeow()
+    }
+  }
+
+  pointerDownPos.value = null
+}
 
 function handleMouseDown() {
   appWindow.startDragging()
@@ -152,14 +176,12 @@ async function handleContextmenu(event: MouseEvent) {
     ],
   })
 
-  // Temporarily disable always-on-top on Windows so the context menu is not covered
   if (isWindows && catStore.window.alwaysOnTop) {
     setAlwaysOnTop(false)
   }
 
   await menu.popup()
 
-  // Restore always-on-top after the menu is closed
   if (!isWindows || !catStore.window.alwaysOnTop) return
 
   setAlwaysOnTop(true)
@@ -188,10 +210,12 @@ function handleMouseMove(event: MouseEvent) {
     @contextmenu="handleContextmenu"
     @mousedown="handleMouseDown"
     @mousemove="handleMouseMove"
+    @pointerdown="handlePointerDown"
+    @pointerup="handlePointerUp"
   >
     <img
       v-if="backgroundImagePath"
-      class="object-cover"
+      class="absolute inset-0 object-cover"
       :src="backgroundImagePath"
     >
 
@@ -200,7 +224,7 @@ function handleMouseMove(event: MouseEvent) {
     <img
       v-for="path in modelStore.pressedKeys"
       :key="path"
-      class="object-cover"
+      class="absolute inset-0 object-cover"
       :src="convertFileSrc(path)"
     >
 
